@@ -1,0 +1,36 @@
+[
+    {
+        "operator_id": "OP-SR-992",
+        "first_name": "Alex",
+        "last_name": "Smith",
+        "tier_level": 3,
+        "max_daily_capacity": 25,
+        "skills": [
+            {
+                "skill_type": "HIGH_DOLLAR",
+                "dollar_signoff_limit": 100000.00
+            },
+            {
+                "skill_type": "OUT_OF_NETWORK",
+                "dollar_signoff_limit": 75000.00
+            },
+            {
+                "skill_type": "MEDICAL_RECORD_REVIEW",
+                "dollar_signoff_limit": 100000.00
+            }
+        ]
+    },
+    {
+        "operator_id": "OP-JR-104",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "tier_level": 1,
+        "max_daily_capacity": 40,
+        "skills": [
+            {
+                "skill_type": "SIMPLE_ERROR_CORRECTION",
+                "dollar_signoff_limit": 5000.00
+            }
+        ]
+    }
+]
