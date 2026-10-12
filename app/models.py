@@ -32,3 +32,10 @@ class Operator(BaseModel):
     tier_level: int
     max_daily_capacity: int
     skills: list[Skill]
+
+class TriagedClaim(BaseModel):
+    intake: ClaimIntake
+    priority_score: float
+    required_skills: list[str]
+    assigned_operator_id: Optional[str] = None
+    status: str = "QUEUED"   # QUEUED or ASSIGNED

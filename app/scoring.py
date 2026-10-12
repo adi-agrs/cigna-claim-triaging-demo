@@ -27,6 +27,7 @@ def calculate_priority_score(claim, pend_instance, current_date=None):
     # 3. Strategic Risk Score (20%)
     # Let's assume certain major clients get VIP tiering
     vip_clients = ["CLI-BLUE-CROSS-01", "CLI-MEGA-CORP"]
+    
     is_vip = claim.get("client_id") in vip_clients
     is_par = claim.get("par_flag", True)
     
@@ -55,21 +56,4 @@ def calculate_priority_score(claim, pend_instance, current_date=None):
     
     return round(final_score, 2)
 
-# # --- Example Usage ---
-# mock_claim = {
-#     "claim_id": "CLM-2026-98745",
-#     "billed_amount": 55000.00,
-#     "par_flag": False,
-#     "client_id": "CLI-BLUE-CROSS-01"
-# }
 
-# mock_pend = {
-#     "pend_date": "2026-09-10", # 30 days old relative to Oct 10, 2026
-#     "pend_reason_code": "MR-01" 
-# }
-
-# # Running calculation using the current evaluation date
-# eval_date = date(2026, 10, 10)
-# priority = calculate_priority_score(mock_claim, mock_pend, current_date=eval_date)
-
-# print(f"Claim Priority Score: {priority} / 100")

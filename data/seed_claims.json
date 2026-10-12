@@ -18,5 +18,37 @@
                 "pend_status": "Open"
             }
         ]
+    },
+    {
+        "claim_core": {
+            "claim_id": "CLM-2026-98746",
+            "date": "2026-10-11",
+            "billed_amount": 1250.50,
+            "allowed_amount": 950.00,
+            "par_flag": false,
+            "provider_id": "NPI0987654321",
+            "client_id": "CLI-BLUE-CROSS-01"
+        },
+        "claim_pend_instances": [
+            {
+                "pend_instance_id": "PND-88322",
+                "claim_id": "CLM-2026-98746",
+                "pend_date": "2026-10-11T09:15:00Z",
+                "pend_reason_code": "AUTH-02",
+                "pend_status": "Open"
+            }
+        ]
+    },
+    {
+        "claim_core": {
+            "claim_id": "CLM-2026-98747",
+            "date": "2026-10-12",
+            "billed_amount": 210.00,
+            "allowed_amount": 210.00,
+            "par_flag": true,
+            "provider_id": "NPI5555555555",
+            "client_id": "CLI-AETNA-02"
+        },
+        "claim_pend_instances": []
     }
 ]

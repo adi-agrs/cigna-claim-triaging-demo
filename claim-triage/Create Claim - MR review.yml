@@ -1,0 +1,39 @@
+info:
+  name: Create Claim - MR review
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://127.0.0.1:8000/claims
+  body:
+    type: json
+    data: |-
+      {
+        "claim_core": {
+          "claim_id": "CLM-2026-98745",
+          "date": "2026-10-10",
+          "billed_amount": 450.00,
+          "allowed_amount": 320.00,
+          "par_flag": true,
+          "provider_id": "NPI1234567890",
+          "client_id": "CLI-BLUE-CROSS-01"
+        },
+        "claim_pend_instances": [
+          {
+            "pend_instance_id": "PND-88321",
+            "claim_id": "CLM-2026-98745",
+            "pend_date": "2026-10-10T14:32:00Z",
+            "pend_reason_code": "MR-01",
+            "pend_status": "Open"
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
