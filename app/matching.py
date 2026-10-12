@@ -6,6 +6,7 @@ REASON_TO_SKILL = {
     "MISSING_DOCS": "MEDICAL_RECORD_REVIEW",
     "COB_VERIFY": "SIMPLE_ERROR_CORRECTION",
     "PRICE_REVIEW": "SIMPLE_ERROR_CORRECTION",
+    "AUTH-02": "SIMPLE_ERROR_CORRECTION",
 }
 HIGH_DOLLAR_THRESHOLD = 10000
 
@@ -31,10 +32,22 @@ def assigned_count(op_id: str) -> int:
 def run_matching():
     queued = [c for c in store.claims if c.status == "QUEUED"]
     queued.sort(key=lambda c: c.priority_score, reverse=True)
+    
     for claim in queued:
-        for op in store.operators:
-            if (operator_qualifies(op, claim)
-                    and assigned_count(op.operator_id) < op.max_daily_capacity):
-                claim.assigned_operator_id = op.operator_id
-                claim.status = "ASSIGNED"
-                break
+        # 1. Gather all operators who qualify and have remaining capacity
+        eligible_ops = [
+            op for op in store.operators
+            if operator_qualifies(op, claim) 
+            and assigned_count(op.operator_id) < op.max_daily_capacity
+        ]
+        
+        if eligible_ops:
+            # 2. Sort by current workload ascending (lowest current jobs first).
+            # Python's sort() is stable, meaning original list order is naturally 
+            # preserved as a secondary tie-breaker if workloads are equal!
+            eligible_ops.sort(key=lambda op: assigned_count(op.operator_id))
+            
+            # 3. Assign to the top candidate
+            best_op = eligible_ops[0]
+            claim.assigned_operator_id = best_op.operator_id
+            claim.status = "ASSIGNED"
