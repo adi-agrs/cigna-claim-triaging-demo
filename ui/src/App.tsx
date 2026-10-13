@@ -394,6 +394,35 @@ export default function App() {
     }
   }
 
+const removeAssignment = async function removeAssignment(claimId: string) {
+    setAssignmentSaving(true);
+    setAssignmentError("");
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/claims/${encodeURIComponent(claimId)}/assignment`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ operator_id: null }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || "Could not remove assignment.");
+      }
+
+      await refreshDashboardData();
+    } catch (error) {
+      setAssignmentError(
+        error instanceof Error ? error.message : "Could not remove assignment.",
+      );
+    } finally {
+      setAssignmentSaving(false);
+    }
+  }
+
   async function savePrioritySettings() {
     const total = Object.values(priorityWeights).reduce(
       (sum, weight) => sum + weight,
@@ -678,8 +707,8 @@ export default function App() {
                         key={id}
                         onClick={() => setManagerClaimId(id)}
                         className={`w-full rounded-xl border p-3 text-left transition ${isSelected
-                            ? "border-blue-400 bg-white shadow-sm ring-2 ring-blue-100"
-                            : "border-slate-200 bg-white hover:border-blue-200"
+                          ? "border-blue-400 bg-white shadow-sm ring-2 ring-blue-100"
+                          : "border-slate-200 bg-white hover:border-blue-200"
                           }`}
                       >
                         <span className="flex items-start justify-between gap-2">
@@ -729,7 +758,7 @@ export default function App() {
                   {managerClaim && operators.map((operator) => {
                     const requiredSkills = managerClaim.required_skills ?? [];
                     const matchingSkills = (operator.skills ?? []).filter((s) => requiredSkills.includes(s.skill_type));
-                    const isAssigned = managerAssignedId === operator.operator_id;
+                    const isAssignedHere = managerClaim.assigned_operator_id === operator.operator_id;
                     const assignedCount = claims.filter(
                       (c) => c.assigned_operator_id === operator.operator_id,
                     ).length;
@@ -738,8 +767,7 @@ export default function App() {
                     return (
                       <div
                         key={operator.operator_id}
-                        className={`flex items-center gap-3 rounded-xl border p-3 transition ${isAssigned ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200"
-                          }`}
+                        className={`flex items-center gap-3 rounded-xl border p-3 transition ${isAssignedHere ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200"}`}
                       >
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-bold text-sky-700">
                           {operator.first_name?.[0]}{operator.last_name?.[0]}
@@ -765,16 +793,25 @@ export default function App() {
                           <span className={`block text-[9px] font-bold ${matchingSkills.length > 0 ? "text-emerald-700" : "text-amber-600"}`}>
                             {matchingSkills.length} skill match{matchingSkills.length === 1 ? "" : "es"}
                           </span>
-                          <button
-                            disabled={assignmentSaving || isAssigned}
-                            onClick={() => saveAssignment(managerClaimId, operator.operator_id)}
-                            className={`mt-1 rounded-md px-2.5 py-1.5 text-[10px] font-bold transition disabled:opacity-50 ${isAssigned
-                                ? "border border-emerald-200 bg-white text-emerald-700"
-                                : "bg-blue-700 text-white hover:bg-blue-800"
-                              }`}
-                          >
-                            {isAssigned ? "Assigned" : managerAssignedId ? "Reassign here" : "Assign"}
-                          </button>
+
+                          {/* Dynamic Button: Remove vs Assign / Reassign */}
+                          {isAssignedHere ? (
+                            <button
+                              disabled={assignmentSaving}
+                              onClick={() => removeAssignment(managerClaimId)}
+                              className="mt-1 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                            >
+                              Remove
+                            </button>
+                          ) : (
+                            <button
+                              disabled={assignmentSaving}
+                              onClick={() => saveAssignment(managerClaimId, operator.operator_id)}
+                              className="mt-1 rounded-md bg-blue-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-blue-800 disabled:opacity-50"
+                            >
+                              {managerClaim.assigned_operator_id ? "Reassign here" : "Assign"}
+                            </button>
+                          )}
                         </span>
                       </div>
                     );

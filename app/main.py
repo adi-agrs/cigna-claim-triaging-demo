@@ -9,7 +9,7 @@ from pydantic import BaseModel
 app = FastAPI()
 
 class AssignmentUpdate(BaseModel):
-    operator_id: str
+    operator_id: str | None = None
 
 class PriorityWeights(BaseModel):
     financial: float
@@ -137,18 +137,46 @@ def set_assignment(claim_id: str, body: AssignmentUpdate):
     if claim is None:
         raise HTTPException(status_code=404, detail="Claim not found.")
 
-    operator = next(
-        (o for o in store.operators if o.operator_id == body.operator_id),
-        None,
-    )
-    if operator is None:
-        raise HTTPException(status_code=404, detail="Operator not found.")
+    if body.operator_id is None:
+        claim.assigned_operator_id = None
+        claim.status = "QUEUED"
+        claim.manual_override = False
 
-    # Overwriting the single field moves the claim off the old operator
-    claim.assigned_operator_id = operator.operator_id
-    claim.status = "ASSIGNED"
-    claim.manual_override = True
+    else:
+        operator = next(
+            (o for o in store.operators if o.operator_id == body.operator_id),
+            None,
+        )
+        if operator is None:
+            raise HTTPException(status_code=404, detail="Operator not found.")
+
+        # Overwriting the single field moves the claim off the old operator
+        claim.assigned_operator_id = operator.operator_id
+        claim.status = "ASSIGNED"
+        claim.manual_override = True
 
     # The previous operator just freed a slot, so let waiting QUEUED claims use it
     run_matching()
     return claim
+
+
+@app.post("/claims/{claim_id}/unassign", response_model=TriagedClaim)
+def unassign_claim(claim_id: str):
+    from app.matching import run_matching
+    
+    target_claim = None
+    for claim in store.claims:
+        if claim.intake.claim_core.claim_id == claim_id:
+            target_claim = claim
+            break
+            
+    if not target_claim:
+        raise HTTPException(status_code=404, model_detail="Claim not found")
+        
+    target_claim.assigned_operator_id = None
+    target_claim.manual_override = False
+    target_claim.status = "QUEUED"
+    
+    # Re-run matching so the rules engine can pick a new operator automatically
+    run_matching()
+    return target_claim
