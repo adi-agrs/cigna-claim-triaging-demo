@@ -1,11 +1,25 @@
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.models import ClaimIntake, TriagedClaim
-from app.scoring import calculate_priority_score
+from app.scoring import calculate_priority_score, DEFAULT_WEIGHTS, validate_weights
 from app.matching import run_matching
 from app import store
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class AssignmentUpdate(BaseModel):
+    operator_id: str
+
+class PriorityWeights(BaseModel):
+    financial: float
+    aging: float
+    strategic: float
+    efficiency: float
+
+
+# Current settings for this backend process
+priority_weights = DEFAULT_WEIGHTS.copy()
 
 @app.on_event("startup")
 def startup_event():
@@ -36,7 +50,10 @@ def create_claim(intake: ClaimIntake):
     
     core = intake.claim_core
     pend = intake.claim_pend_instances[0] if intake.claim_pend_instances else None
-    score = calculate_priority_score(core.model_dump(), pend.model_dump() if pend else {})
+    score = calculate_priority_score(core.model_dump(),
+                                      pend.model_dump() if pend else {},
+                                      weights=priority_weights,
+                                      )
     
     skills = required_skills(core, pend) if pend else ["SIMPLE_ERROR_CORRECTION"]
     
@@ -66,3 +83,72 @@ def list_operators():
         }
         for op in store.operators
     ]
+
+
+@app.get("/priority-model")
+def get_priority_model():
+    return priority_weights
+
+
+@app.put("/priority-model")
+def update_priority_model(weights: PriorityWeights):
+    global priority_weights
+
+    new_weights = weights.model_dump()
+
+    try:
+        validate_weights(new_weights)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    # Save the new weights for this running backend
+    priority_weights = new_weights
+
+    # Recalculate scores for claims already in memory
+    for claim in store.claims:
+        core = claim.intake.claim_core
+
+        pend = (
+            claim.intake.claim_pend_instances[0]
+            if claim.intake.claim_pend_instances
+            else None
+        )
+
+        claim.priority_score = calculate_priority_score(
+            core.model_dump(),
+            pend.model_dump() if pend else {},
+            weights=priority_weights,
+        )
+
+    # Re-run assignment after the priority order changes
+    run_matching()
+
+    return {
+        "message": "Priority model updated successfully",
+        "weights": priority_weights,
+    }
+
+@app.put("/claims/{claim_id}/assignment", response_model=TriagedClaim)
+def set_assignment(claim_id: str, body: AssignmentUpdate):
+    claim = next(
+        (c for c in store.claims if c.intake.claim_core.claim_id == claim_id),
+        None,
+    )
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found.")
+
+    operator = next(
+        (o for o in store.operators if o.operator_id == body.operator_id),
+        None,
+    )
+    if operator is None:
+        raise HTTPException(status_code=404, detail="Operator not found.")
+
+    # Overwriting the single field moves the claim off the old operator
+    claim.assigned_operator_id = operator.operator_id
+    claim.status = "ASSIGNED"
+    claim.manual_override = True
+
+    # The previous operator just freed a slot, so let waiting QUEUED claims use it
+    run_matching()
+    return claim

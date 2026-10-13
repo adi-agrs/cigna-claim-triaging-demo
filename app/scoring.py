@@ -1,8 +1,39 @@
 from datetime import datetime, date
 
-def calculate_priority_score(claim, pend_instance, current_date=None):
+DEFAULT_WEIGHTS = {
+    "financial": 35,
+    "aging": 30,
+    "strategic": 20,
+    "efficiency": 15,
+}
+
+def validate_weights(weights):
+    required = set(DEFAULT_WEIGHTS)
+
+    if set(weights) != required:
+        raise ValueError("Exactly four priority weights are required.")
+
+    if any(
+        not isinstance(weight, (int, float))
+        or isinstance(weight, bool)
+        or weight < 0
+        for weight in weights.values()
+    ):
+        raise ValueError("Weights must be non-negative numbers.")
+
+    if not abs(sum(weights.values()) - 100) < 1e-9:
+        raise ValueError("Priority weights must add up to 100.")
+
+    return weights
+
+def calculate_priority_score(claim, pend_instance, current_date=None, weights=None):
     if current_date is None:
         current_date = date.today()
+
+    if weights is None:
+        weights = DEFAULT_WEIGHTS
+
+    validate_weights(weights)
         
     # 1. Financial Impact Score (35%)
     billed = claim.get("billed_amount", 0)
@@ -11,13 +42,17 @@ def calculate_priority_score(claim, pend_instance, current_date=None):
     elif billed >= 1000: fin_score = 50
     else: fin_score = 25
 
+
     # 2. Aging Score (30%)
     # Parse pend date (handles string or date object)
     p_date = pend_instance.get("pend_date")
     if isinstance(p_date, str):
         p_date = datetime.strptime(p_date[:10], "%Y-%m-%d").date()
-    
-    days_pended = (current_date - p_date).days
+
+    if p_date is None:
+        days_pended = 0
+    else:
+        days_pended = (current_date - p_date).days
     
     if days_pended >= 25: age_score = 100
     elif days_pended >= 15: age_score = 75
@@ -48,10 +83,10 @@ def calculate_priority_score(claim, pend_instance, current_date=None):
 
     # Calculate Weighted Final Score
     final_score = (
-        (fin_score * 0.35) + 
-        (age_score * 0.30) + 
-        (strat_score * 0.20) + 
-        (eff_score * 0.15)
+        (fin_score * (weights["financial"] / 100))
+        + (age_score * (weights["aging"] / 100))
+        + (strat_score * (weights["strategic"] / 100))
+        + (eff_score * (weights["efficiency"] / 100))
     )
     
     return round(final_score, 2)

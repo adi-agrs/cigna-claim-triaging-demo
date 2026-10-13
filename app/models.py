@@ -38,4 +38,5 @@ class TriagedClaim(BaseModel):
     priority_score: float
     required_skills: list[str]
     assigned_operator_id: Optional[str] = None
+    manual_override: bool = False #new
     status: str = "QUEUED"   # QUEUED or ASSIGNED
