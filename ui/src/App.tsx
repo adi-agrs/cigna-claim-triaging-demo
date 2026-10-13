@@ -209,9 +209,11 @@ export default function App() {
   const [selectedClaim, setSelectedClaim] = useState<string>("");
 
   const [filter, setFilter] = useState("All claims");
-  const [queueTab, setQueueTab] = useState<"pending" | "assigned">("pending");
+  const [queueTab, setQueueTab] = useState<"pending" | "assigned" | "all">("pending");
   const [refreshCount, setRefreshCount] = useState(0);
   const [secondsSinceRefresh, setSecondsSinceRefresh] = useState(0);
+  const [showAssignmentManager, setShowAssignmentManager] = useState(false);
+  const [managerClaimId, setManagerClaimId] = useState("");
 
   // Fetch live backend data on load
   useEffect(() => {
@@ -243,7 +245,11 @@ export default function App() {
   }, []);
 
   const claimsForTab = claims.filter((claim) => {
-    const isAssigned = claim.status === "ASSIGNED" || Boolean(claim.assigned_operator_id);
+    const isAssigned =
+      claim.status === "ASSIGNED" ||
+      Boolean(claim.assigned_operator_id);
+
+    if (queueTab === "all") return true;
     return queueTab === "assigned" ? isAssigned : !isAssigned;
   });
 
@@ -269,41 +275,9 @@ const successfullyAssignedCount = claims.filter(
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col bg-brand p-5 lg:flex">
-        <Brand />
-        <div className="mt-9">
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-300">Workspace</p>
-          <nav className="space-y-1">
-            <NavItem icon={<IconGrid />} label="Overview" />
-            <NavItem icon={<IconClaims />} label="Claim triage" active badge={claims.length.toString()} />
-            <NavItem icon={<IconPeople />} label="Operators" />
-            <NavItem icon={<IconChart />} label="Analytics" />
-          </nav>
-        </div>
-        <div className="mt-auto">
-          <div className="mb-5 rounded-xl border border-white/10 bg-white/6 p-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white">
-              <span className="flex size-6 items-center justify-center rounded-md bg-emerald-500/20 text-emerald-300"><IconSpark /></span>
-              AI triage online
-            </div>
-            <p className="text-[11px] leading-relaxed text-blue-200">FastAPI backend connected live.</p>
-          </div>
-          <NavItem icon={<IconSettings />} label="Settings" />
-          <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-5">
-            <div className="flex size-9 items-center justify-center rounded-full bg-emerald-400 text-xs font-extrabold text-blue-950">JM</div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-bold text-white">Jordan Mitchell</p>
-              <p className="truncate text-[10px] text-blue-300">Triage lead</p>
-            </div>
-            <IconChevron />
-          </div>
-        </div>
-      </aside> */}
 
-      {/* <main className="lg:ml-60"> */}
       <main className="min-h-screen">
         <header className="sticky top-0 z-10 flex h-16 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-7">
-          {/* <div className="lg:hidden"><Brand /></div> */}
           <div className="ml-auto flex items-center gap-2">
             <label className="relative hidden sm:block">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400"><IconSearch /></span>
@@ -351,6 +325,32 @@ const successfullyAssignedCount = claims.filter(
                   Successfully assigned ({successfullyAssignedCount})
                   {queueTab === "assigned" && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-emerald-600" />}
                 </button>
+                {/* New All Claims tab */}
+                <button
+                  onClick={() => setQueueTab("all")}
+                  className={`relative pb-3 text-sm font-bold transition ${
+                    queueTab === "all"
+                      ? "text-blue-700"
+                      : "text-slate-400 hover:text-slate-700"
+                  }`}
+                >
+                  All Claims ({claims.length})
+                  {queueTab === "all" && (
+                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-blue-700" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setManagerClaimId(
+                      selectedClaim || claims[0]?.intake.claim_core.claim_id || ""
+                    );
+                    setShowAssignmentManager(true);
+                  }}
+                  className="mb-2 ml-auto rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-800"
+                >
+                  Manage assignments
+                </button>
+                
               </div>
               
               <div className="space-y-3">
